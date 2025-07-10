@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastro Simples</title>
+    <style>
+        /* CSS Básico para uma aparência limpa */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            background-color: #f4f7f9;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background-color: #fff;
+            padding: 25px 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            text-align: center;
+            color: #2c3e50;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        input {
+            padding: 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        button {
+            padding: 12px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+        #user-list-container {
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+        #user-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        #user-list li {
+            background-color: #ecf0f1;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+        .message {
+            text-align: center;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            display: none; /* Começa escondido */
+        }
+        .message.success {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+        .message.error {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Crie sua Conta</h1>
+        <form id="user-form">
+            <input type="text" id="name" name="name" placeholder="Seu nome completo" required>
+            <input type="email" id="email" name="email" placeholder="Seu melhor e-mail" required>
+            <button type="submit" id="submit-button">Cadastrar</button>
+        </form>
+        <div id="message-area" class="message"></div>
+
+        <div id="user-list-container">
+            <h2>Usuários Cadastrados</h2>
+            <ul id="user-list">
+                <li>Carregando...</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURAÇÃO ---
+        // !!! MUITO IMPORTANTE: SUBSTITUA A URL ABAIXO PELA URL DO SEU BACKEND NO RAILWAY !!!
+        const apiUrl = 'URL_DO_SEU_BACKEND_NO_RAILWAY';
+
+        // --- ELEMENTOS DO DOM ---
+        const userForm = document.getElementById('user-form');
+        const nameInput = document.getElementById('name');
+        const emailInput = document.getElementById('email');
+        const userList = document.getElementById('user-list');
+        const submitButton = document.getElementById('submit-button');
+        const messageArea = document.getElementById('message-area');
+
+        // --- FUNÇÕES ---
+
+        // Função para mostrar mensagens de sucesso ou erro
+        function showMessage(text, type) {
+            messageArea.textContent = text;
+            messageArea.className = `message ${type}`; // 'message success' ou 'message error'
+            messageArea.style.display = 'block';
+            setTimeout(() => {
+                messageArea.style.display = 'none';
+            }, 4000); // Esconde a mensagem depois de 4 segundos
+        }
+
+        // Função para buscar e exibir os usuários
+        async function fetchUsers() {
+            try {
+                const response = await fetch(`${apiUrl}/users`);
+                if (!response.ok) throw new Error('Falha ao buscar usuários.');
+
+                const users = await response.json();
+                userList.innerHTML = ''; // Limpa a lista atual
+
+                if (users.length === 0) {
+                    userList.innerHTML = '<li>Nenhum usuário cadastrado ainda.</li>';
+                } else {
+                    users.forEach(user => {
+                        const li = document.createElement('li');
+                        li.textContent = user.name;
+                        userList.appendChild(li);
+                    });
+                }
+            } catch (error) {
+                console.error(error);
+                userList.innerHTML = '<li>Não foi possível carregar a lista de usuários.</li>';
+            }
+        }
+
+        // Função para lidar com o envio do formulário
+        async function handleFormSubmit(event) {
+            event.preventDefault(); // Impede o recarregamento da página
+
+            const name = nameInput.value.trim();
+            const email = emailInput.value.trim();
+
+            if (!name || !email) {
+                showMessage('Por favor, preencha todos os campos.', 'error');
+                return;
+            }
+
+            submitButton.disabled = true;
+            submitButton.textContent = 'Enviando...';
+
+            try {
+                const response = await fetch(`${apiUrl}/users`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ name, email }),
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    // Usa a mensagem de erro da API ou uma genérica
+                    throw new Error(result.error || 'Ocorreu um erro ao cadastrar.');
+                }
+                
+                showMessage('Usuário cadastrado com sucesso!', 'success');
+                userForm.reset(); // Limpa o formulário
+                await fetchUsers(); // Atualiza a lista de usuários
+
+            } catch (error) {
+                console.error(error);
+                showMessage(error.message, 'error');
+            } finally {
+                submitButton.disabled = false;
+                submitButton.textContent = 'Cadastrar';
+            }
+        }
+
+        // --- EVENTOS ---
+
+        // Adiciona o listener para o envio do formulário
+        userForm.addEventListener('submit', handleFormSubmit);
+
+        // Carrega os usuários assim que a página é aberta
+        document.addEventListener('DOMContentLoaded', fetchUsers);
+
+    </script>
+</body>
+</html>
